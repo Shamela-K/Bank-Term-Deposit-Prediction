@@ -2,45 +2,161 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Load model and feature columns
+# ==========================================
+
+# PAGE CONFIG
+
+# ==========================================
+
+st.set_page_config(
+page_title="Bank Term Deposit Prediction",
+page_icon="🏦",
+layout="wide"
+)
+
+# ==========================================
+
+# LOAD MODEL
+
+# ==========================================
+
 model = joblib.load("lightgbm_model.pkl")
 feature_columns = joblib.load("feature_columns.pkl")
 
-st.set_page_config(page_title="Bank Term Deposit Prediction")
+# ==========================================
 
-st.title("🏦 Bank Term Deposit Prediction")
+# HEADER
 
-st.write("Predict whether a customer will subscribe to a term deposit.")
-st.subheader("Customer Summary")
-# =========================
-# User Inputs
-# =========================
+# ==========================================
 
-age = st.number_input("Age", min_value=18, max_value=100, value=35)
+st.title("🏦 Bank Term Deposit Prediction Dashboard")
+
+st.markdown(
+"""
+Predict whether a customer will subscribe to a bank term deposit using a
+Machine Learning model trained on the UCI Bank Marketing Dataset.
+"""
+)
+
+# ==========================================
+
+# SIDEBAR
+
+# ==========================================
+
+st.sidebar.title("📌 Project Information")
+
+st.sidebar.success("Final Model: LightGBM")
+
+st.sidebar.markdown("""
+
+### Techniques Used
+
+✅ Feature Engineering
+
+✅ Class Imbalance Analysis
+
+✅ SMOTE
+
+✅ LightGBM
+
+✅ SHAP Explainability
+
+✅ Stratified K-Fold Validation
+
+✅ Streamlit Deployment
+""")
+
+# ==========================================
+
+# MODEL METRICS
+
+# ==========================================
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+  st.metric("Accuracy", "90.90%")
+
+with col2:
+  st.metric("ROC-AUC", "93.46%")
+
+with col3:
+  st.metric("Features Used", "44")
+
+# ==========================================
+
+# MODEL COMPARISON
+
+# ==========================================
+
+st.subheader("📊 Model Comparison Leaderboard")
+
+comparison = pd.DataFrame({
+"Rank":[1,2,3,4,5],
+"Model":[
+"Stacking",
+"LightGBM",
+"CatBoost",
+"XGBoost",
+"Random Forest"
+],
+"ROC-AUC":[
+0.9347,
+0.9346,
+0.9325,
+0.9277,
+0.9232
+]
+})
+
+st.dataframe(comparison, width="stretch")
+
+st.markdown("---")
+
+# ==========================================
+
+# CUSTOMER INPUT
+
+# ==========================================
+
+st.subheader("🧾 Customer Information")
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+
+ age = st.number_input(
+    "Age",
+    min_value=18,
+    max_value=100,
+    value=35
+)
 
 job = st.selectbox(
     "Job",
     [
-        "admin.","blue-collar","entrepreneur","housemaid",
-        "management","retired","self-employed",
-        "services","student","technician",
-        "unemployed","unknown"
+        "admin.","blue-collar","entrepreneur",
+        "housemaid","management","retired",
+        "self-employed","services","student",
+        "technician","unemployed","unknown"
     ]
 )
 
 marital = st.selectbox(
     "Marital Status",
-    ["divorced", "married", "single"]
+    ["divorced","married","single"]
 )
 
 education = st.selectbox(
     "Education",
-    ["unknown", "primary", "secondary", "tertiary"]
+    ["unknown","primary","secondary","tertiary"]
 )
 
 default = st.selectbox(
     "Default Credit",
-    ["no", "yes"]
+    ["no","yes"]
 )
 
 balance = st.number_input(
@@ -50,17 +166,21 @@ balance = st.number_input(
 
 housing = st.selectbox(
     "Housing Loan",
-    ["no", "yes"]
+    ["no","yes"]
 )
 
-loan = st.selectbox(
+
+with col2:
+
+
+ loan = st.selectbox(
     "Personal Loan",
-    ["no", "yes"]
+    ["no","yes"]
 )
 
 contact = st.selectbox(
     "Contact Type",
-    ["cellular", "telephone", "unknown"]
+    ["cellular","telephone","unknown"]
 )
 
 month = st.selectbox(
@@ -103,32 +223,32 @@ previous = st.number_input(
 
 poutcome = st.selectbox(
     "Previous Campaign Outcome",
-    ["failure", "other", "success", "unknown"]
+    ["failure","other","success","unknown"]
 )
 
-# =========================
-# Prediction Button
-# =========================
 
-if st.button("Predict"):
+# ==========================================
 
-    # Education ordinal encoding
+# PREDICTION
+
+# ==========================================
+
+if st.button("🔮 Predict Subscription"):
     education_map = {
-        "unknown": 0,
-        "primary": 1,
-        "secondary": 2,
-        "tertiary": 3
+        "unknown":0,
+        "primary":1,
+        "secondary":2,
+        "tertiary":3
     }
-
     edu_num = education_map[education]
 
-    # Feature engineering
+    # Feature Engineering
+
     age_balance = age * balance
     duration_balance = duration * balance
     age_education = age * edu_num
     duration_education = duration * edu_num
 
-    # Base dataframe
     input_df = pd.DataFrame({
         "age":[age],
         "education":[edu_num],
@@ -144,14 +264,15 @@ if st.button("Predict"):
         "duration_education":[duration_education]
     })
 
-    # One-hot columns used during training
-
     dummy_cols = {
+
         f"job_{job}":1,
         f"marital_{marital}":1,
+
         "default_yes":1 if default=="yes" else 0,
         "housing_yes":1 if housing=="yes" else 0,
         "loan_yes":1 if loan=="yes" else 0,
+
         f"contact_{contact}":1,
         f"month_{month}":1,
         f"poutcome_{poutcome}":1
@@ -160,37 +281,104 @@ if st.button("Predict"):
     for col,val in dummy_cols.items():
         input_df[col] = val
 
-    # Add missing columns
     for col in feature_columns:
         if col not in input_df.columns:
             input_df[col] = 0
 
-    # Correct order
     input_df = input_df[feature_columns]
 
-    # Prediction
     prediction = model.predict(input_df)[0]
-
     probability = model.predict_proba(input_df)[0][1]
 
-    st.subheader("Prediction Result")
+    st.markdown("---")
+
+    st.subheader("📌 Prediction Result")
 
     if prediction == 1:
         st.success("✅ Customer is likely to subscribe")
+        st.balloons()
     else:
         st.error("❌ Customer is unlikely to subscribe")
 
+    st.subheader("📈 Subscription Probability")
+
+    st.progress(float(probability))
+
     st.metric(
-        "Subscription Probability",
+        "Probability",
         f"{probability*100:.2f}%"
     )
+
     if probability >= 0.80:
-       st.success("🔥 Very High Chance")
+        st.success("🔥 Very High Chance")
 
     elif probability >= 0.60:
-       st.info("👍 Good Chance")
+        st.info("👍 Good Chance")
 
     elif probability >= 0.40:
-       st.warning("⚠ Moderate Chance")
+        st.warning("⚠ Moderate Chance")
+
     else:
-       st.error("❌ Low Chance")
+        st.error("❌ Low Chance")
+
+    st.subheader("💡 Business Insight")
+
+    if duration > 200:
+        st.info(
+            "Long call duration generally increases the likelihood of subscription."
+        )
+
+    if poutcome == "success":
+        st.success(
+            "Previous successful campaign outcome strongly improves conversion probability."
+        )
+
+# ==========================================
+
+# FEATURE IMPORTANCE
+
+# ==========================================
+
+st.markdown("---")
+
+st.subheader("🔍 Top Feature Importance")
+
+st.image(
+"feature_importance.png",
+caption="Top 10 Important Features from LightGBM"
+)
+
+# ==========================================
+
+# PROJECT SUMMARY
+
+# ==========================================
+
+st.markdown("---")
+
+st.subheader("📋 Project Summary")
+
+st.write("""
+This project predicts whether a customer will subscribe to a bank term deposit.
+
+### Techniques Used
+
+* Feature Engineering
+* Class Imbalance Analysis
+* SMOTE
+* LightGBM
+* SHAP Explainability
+* Stratified K-Fold Cross Validation
+* Streamlit Deployment
+
+### Final Selected Model
+
+LightGBM
+
+### Performance
+
+* Accuracy: 90.90%
+* ROC-AUC: 93.46%
+
+The deployed model helps marketing teams identify customers with a high probability of subscribing to term deposits, enabling more efficient campaign targeting.
+""")
