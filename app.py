@@ -93,8 +93,9 @@ with col3:
 st.subheader("📊 Model Comparison Leaderboard")
 
 comparison = pd.DataFrame({
-"Rank":[1,2,3,4,5],
+"Rank":[1,2,3,4,5,6],
 "Model":[
+"Blending",
 "Stacking",
 "LightGBM",
 "CatBoost",
@@ -102,6 +103,7 @@ comparison = pd.DataFrame({
 "Random Forest"
 ],
 "ROC-AUC":[
+0.9353,
 0.9347,
 0.9346,
 0.9325,
